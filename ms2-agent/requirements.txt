@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+langchain-neo4j
+jellyfish
+pydantic
+
