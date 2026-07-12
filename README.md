@@ -26,9 +26,11 @@ The platform is built as a cloud-native, polyglot microservice architecture with
                              ├── LangGraph / LangChain (Stateful AI Agent)
                              ├── Double Metaphone (Phonetic Indexing Engine)
                              └── Neo4j AuraDB (Graph Database Traversal)
+```
 
 
-                             # Core Microservices
+
+# Core Microservices
 
 ## Frontend (React / Next.js)
 - Responsive web interface featuring Citizen and Civic Admin portals.
