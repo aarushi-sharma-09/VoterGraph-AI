@@ -1,0 +1,43 @@
+version: "3.9"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# VoterGraph.ai — Local Development Infrastructure
+#
+# Starts:  postgres (ms1-core relational DB)
+# Schema is managed by node-pg-migrate migrations inside /ms1-core/migrations/
+# Run migrations with: cd ms1-core && npm run migrate:up
+#
+# Usage:
+#   docker compose up -d          → start in background
+#   docker compose down           → stop & remove containers (data persists in volume)
+#   docker compose down -v        → stop & WIPE all data (nuclear reset)
+#   docker compose logs -f        → tail logs
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+  # ── PostgreSQL: User accounts, sessions, audit logs ────────────────────────
+  postgres:
+    image: postgres:16-alpine           # lightweight, production-grade image
+    container_name: votergraph_postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"                     # exposed to localhost so ms1-core can connect
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data   # data persists across restarts
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Named volumes — Docker manages these on your machine
+# ─────────────────────────────────────────────────────────────────────────────
+volumes:
+  postgres_data:
+    driver: local

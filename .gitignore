@@ -13,6 +13,10 @@ __pycache__/
 # Environmental Variables (CRITICAL: Never commit secrets)
 .env
 .env.local
+.env.*.local
+
+# Docker overrides (local machine tweaks, not for repo)
+docker-compose.override.yml
 
 # OS Files
 .DS_Store
