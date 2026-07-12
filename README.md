@@ -115,3 +115,7 @@ pip install -r requirements.txt
 uvicorn main:app --reload --port 8000
 
 Access the UI at http://localhost:3001
+```
+
+###Figma Wireframe Link
+```https://www.figma.com/design/pBN8BWNiixFtxkAQxjOrL0/Untitled?node-id=0-1&t=GLiWKt6AYMZxn5o4-1```
