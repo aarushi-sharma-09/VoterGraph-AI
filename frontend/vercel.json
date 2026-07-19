@@ -1,0 +1,9 @@
+{
+  "outputDirectory": "dist",
+  "rewrites": [
+    {
+      "source": "/api/:match*",
+      "destination": "http://3.89.55.201/api/:match*"
+    }
+  ]
+}
