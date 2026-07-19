@@ -68,7 +68,7 @@ function LoginScreen({ onLogin }: { onLogin: (role: string, email: string) => vo
   const handleLogin = async () => {
     try {
       setLoading(true);
-      const res = await axios.post("http://localhost:3001/api/auth/login", { email, password });
+      const res = await axios.post(`${import.meta.env.VITE_API_URL || \'${import.meta.env.VITE_API_URL || 'http://localhost:3001'}\'}/api/auth/login`, { email, password });
       localStorage.setItem("token", res.data.token);
       onLogin(res.data.user.role, res.data.user.email);
     } catch (err: any) {
@@ -90,7 +90,7 @@ function LoginScreen({ onLogin }: { onLogin: (role: string, email: string) => vo
     if (password.length < 8) { alert("Password must be at least 8 characters."); return; }
     try {
       setLoading(true);
-      const res = await axios.post("http://localhost:3001/api/auth/register", { email, password });
+      const res = await axios.post(`${import.meta.env.VITE_API_URL || \'${import.meta.env.VITE_API_URL || 'http://localhost:3001'}\'}/api/auth/register`, { email, password });
       if (res.data.requiresOtp && res.data.userId) {
         setOtpUserId(res.data.userId);
         setOtpSuccess("Account created! Check your email (or the ms1-core terminal in dev mode) for your 6-digit code.");
@@ -115,7 +115,7 @@ function LoginScreen({ onLogin }: { onLogin: (role: string, email: string) => vo
     setOtpError("");
     try {
       setLoading(true);
-      const res = await axios.post("http://localhost:3001/api/auth/verify-otp", { userId: otpUserId, otp });
+      const res = await axios.post(`${import.meta.env.VITE_API_URL || \'${import.meta.env.VITE_API_URL || 'http://localhost:3001'}\'}/api/auth/verify-otp`, { userId: otpUserId, otp });
       localStorage.setItem("token", res.data.token);
       onLogin(res.data.user.role, res.data.user.email);
     } catch (err: any) {
@@ -130,7 +130,7 @@ function LoginScreen({ onLogin }: { onLogin: (role: string, email: string) => vo
     setOtpError("");
     setOtpSuccess("");
     try {
-      await axios.post("http://localhost:3001/api/auth/resend-otp", { userId: otpUserId });
+      await axios.post(`${import.meta.env.VITE_API_URL || \'${import.meta.env.VITE_API_URL || 'http://localhost:3001'}\'}/api/auth/resend-otp`, { userId: otpUserId });
       setOtpSuccess("A new code has been sent.");
       setOtp("");
     } catch (err: any) {
@@ -530,7 +530,7 @@ function ChatScreen({ userRole, userEmail, onAdmin, onLogout }: { userRole: stri
   const [selectedStation, setSelectedStation] = useState("");
 
   useEffect(() => {
-    axios.get("http://localhost:3001/api/geo/states").then(res => setStates(res.data.states || [])).catch(console.error);
+    axios.get(`${import.meta.env.VITE_API_URL || \'${import.meta.env.VITE_API_URL || 'http://localhost:3001'}\'}/api/geo/states`).then(res => setStates(res.data.states || [])).catch(console.error);
   }, []);
 
   useEffect(() => {
@@ -538,7 +538,7 @@ function ChatScreen({ userRole, userEmail, onAdmin, onLogout }: { userRole: stri
     setSelectedConstituency(""); setConstituencies([]);
     setSelectedStation(""); setPollingStations([]);
     if (selectedState) {
-      axios.get(`http://localhost:3001/api/geo/districts?stateId=${selectedState}`).then(res => setDistricts(res.data.districts || [])).catch(console.error);
+      axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/geo/districts?stateId=${selectedState}`).then(res => setDistricts(res.data.districts || [])).catch(console.error);
     }
   }, [selectedState]);
 
@@ -546,14 +546,14 @@ function ChatScreen({ userRole, userEmail, onAdmin, onLogout }: { userRole: stri
     setSelectedConstituency(""); setConstituencies([]);
     setSelectedStation(""); setPollingStations([]);
     if (selectedDistrict) {
-      axios.get(`http://localhost:3001/api/geo/constituencies?districtId=${selectedDistrict}`).then(res => setConstituencies(res.data.constituencies || [])).catch(console.error);
+      axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/geo/constituencies?districtId=${selectedDistrict}`).then(res => setConstituencies(res.data.constituencies || [])).catch(console.error);
     }
   }, [selectedDistrict]);
 
   useEffect(() => {
     setSelectedStation(""); setPollingStations([]);
     if (selectedConstituency) {
-      axios.get(`http://localhost:3001/api/geo/polling-stations?constituencyId=${selectedConstituency}`).then(res => setPollingStations(res.data.pollingStations || [])).catch(console.error);
+      axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/geo/polling-stations?constituencyId=${selectedConstituency}`).then(res => setPollingStations(res.data.pollingStations || [])).catch(console.error);
     }
   }, [selectedConstituency]);
 
@@ -564,14 +564,14 @@ useEffect(() => {
 
   const fetchSessions = async () => {
     try {
-       const res = await axios.get("http://localhost:3001/api/chat/sessions", { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } });
+       const res = await axios.get(`${import.meta.env.VITE_API_URL || \'${import.meta.env.VITE_API_URL || 'http://localhost:3001'}\'}/api/chat/sessions`, { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } });
        setSessions(res.data.sessions || []);
     } catch(e) {}
   };
 
   const loadSession = async (sessionId: string) => {
     try {
-       const res = await axios.get(`http://localhost:3001/api/chat/sessions/${sessionId}`, { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } });
+       const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/chat/sessions/${sessionId}`, { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } });
        // Map prisma schema correctly
        const mapped = res.data.session.messages.map((m: any) => ({
          role: m.role,
@@ -590,7 +590,7 @@ useEffect(() => {
   const loadEarlier = async () => {
     if (!currentSessionId || !nextCursor) return;
     try {
-       const res = await axios.get(`http://localhost:3001/api/chat/sessions/${currentSessionId}?cursor=${nextCursor}`, { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } });
+       const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/chat/sessions/${currentSessionId}?cursor=${nextCursor}`, { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } });
        const mapped = res.data.session.messages.map((m: any) => ({
          role: m.role,
          text: m.content,
@@ -614,7 +614,7 @@ useEffect(() => {
           return;
         }
         try {
-          const res = await axios.get(`http://localhost:3001/api/chat/queue/${jobId}`, { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } });
+          const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/chat/queue/${jobId}`, { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } });
           if (res.data.status === 'DONE') {
              clearInterval(pollTimerRef.current);
              resolve(res.data.result);
@@ -679,14 +679,14 @@ useEffect(() => {
       if (isResume) {
          // Proxy route flagged as missing in backend - we call it anyway per requirements
          const res = await axios.post(
-           "http://localhost:3001/api/chat/resume",
+           `${import.meta.env.VITE_API_URL || \'${import.meta.env.VITE_API_URL || 'http://localhost:3001'}\'}/api/chat/resume`,
            { sessionId: sessionIdContext, clarificationAnswer: textToSend },
            { headers: { Authorization: `Bearer ${token}` } }
          );
          data = res.data;
       } else {
          const res = await axios.post(
-           "http://localhost:3001/api/chat",
+           `${import.meta.env.VITE_API_URL || \'${import.meta.env.VITE_API_URL || 'http://localhost:3001'}\'}/api/chat`,
            { 
              message: textToSend, 
              pollingStationId: selectedStation || undefined, 
