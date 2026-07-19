@@ -1,6 +1,33 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# VoterGraph.ai — ms2-agent Python Dependencies
+# Install: pip install -r requirements.txt
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Web framework & server
 fastapi
-uvicorn
-langchain-neo4j
-jellyfish
+uvicorn[standard]
+
+# LangChain core + integrations
+langchain
+langchain-community
+langchain-google-genai        # Google Gemini via LangChain
+
+# Neo4j graph database driver
+neo4j
+langchain-neo4j               # LangChain ↔ Neo4j bridge (Neo4jGraph, GraphCypherQAChain)
+
+# Data validation
 pydantic
+pydantic-settings
+
+# Environment variable loading
+python-dotenv
+
+# Phonetic matching for Indian name transliteration
+jellyfish                     # Soundex, NYSIIS, etc.
+doublemetaphone               # True Double Metaphone algorithm for phonetic name hashing
+
+# LangGraph StateGraph + persistent checkpointer (human-in-the-loop pause/resume)
+langgraph-checkpoint-postgres # PostgreSQL-backed checkpoint store for interrupt() persistence
+psycopg[binary]               # Psycopg3 driver required by langgraph-checkpoint-postgres
 

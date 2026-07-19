@@ -1,0 +1,165 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ── 1. Auth ───────────────────────────────────────────────────────────────────
+
+model User {
+  id            String         @id @default(uuid())
+  email         String         @unique
+  passwordHash  String
+  role          Role           @default(CITIZEN)
+  isVerified    Boolean        @default(false)
+  createdAt     DateTime       @default(now())
+  sessions      Session[]
+  chatQueueJobs ChatQueueJob[]
+  otpTokens     OtpToken[]
+
+  @@map("users")
+}
+
+// ── OTP Verification Tokens ───────────────────────────────────────────────────
+// Stores hashed one-time passwords for email verification during signup.
+// Tokens expire after 10 minutes. used=true prevents replay attacks.
+
+model OtpToken {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeHash  String   // bcrypt hash of the 6-digit OTP — never store plaintext
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  attempts  Int      @default(0) // invalidate after 5 wrong guesses
+  createdAt DateTime @default(now())
+
+  @@map("otp_tokens")
+}
+
+// ── 2. Chat sessions ─────────────────────────────────────────────────────────
+// chatHistory JSONB has been replaced by the Message model below.
+// LangGraph's Postgres checkpointer stores cross-turn memory in its own tables.
+
+model Session {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String?
+  createdAt DateTime  @default(now())
+  messages  Message[]
+
+  @@map("sessions")
+}
+
+// ── 3. Per-message audit log ──────────────────────────────────────────────────
+// One row per chat turn (user or assistant). Replaces the chatHistory JSONB array.
+// Index on (sessionId, createdAt) enables efficient cursor-paginated history loads.
+
+model Message {
+  id          String   @id @default(cuid())
+  sessionId   String
+  session     Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role        String   // "user" | "assistant"
+  content     String
+  cypherQuery String?  // The Cypher query generated for this assistant turn
+  graphNodes  Json?    // Raw Neo4j node data for the Evidence Drawer
+  createdAt   DateTime @default(now())
+
+  @@index([sessionId, createdAt])
+  @@map("messages")
+}
+
+// ── 4. Chat queue jobs ────────────────────────────────────────────────────────
+// Used when activeMs2Requests >= MAX_CONCURRENT_MS2. Provides backpressure
+// without Redis. SCALE NOTE: activeMs2Requests is an in-process counter —
+// this queue only works correctly with a SINGLE ms1 instance. If ms1 is ever
+// scaled horizontally, replace the counter with SELECT COUNT(*) WHERE status='PROCESSING'.
+
+model ChatQueueJob {
+  id        String   @id @default(cuid())
+  sessionId String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  message          String
+  status           String   @default("PENDING") // PENDING | PROCESSING | DONE | FAILED
+  pollingStationId String?  // Optional geo scope for the query
+  result           Json?
+  errorInfo        Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map("chat_queue_jobs")
+}
+
+// ── 5. Geo reference data (static, public, no PII) ───────────────────────────
+// Powers the cascading State → District → Constituency → PollingStation dropdowns.
+// This data changes rarely — served with an in-memory cache (10 min TTL).
+// Source of truth: ECI electoral rolls. Ingestion pipeline coordinates this data
+// into Neo4j; Postgres holds the reference lookup version for fast dropdown queries.
+
+model State {
+  id        String     @id @default(cuid())
+  name      String     @unique
+  code      String     @unique
+  districts District[]
+
+  @@map("states")
+}
+
+model District {
+  id             String         @id @default(cuid())
+  name           String
+  code           String
+  stateId        String
+  state          State          @relation(fields: [stateId], references: [id])
+  constituencies Constituency[]
+
+  @@unique([stateId, code])
+  @@map("districts")
+}
+
+model Constituency {
+  id              String          @id @default(cuid())
+  name            String
+  code            String
+  districtId      String
+  district        District        @relation(fields: [districtId], references: [id])
+  pollingStations PollingStation[]
+
+  @@unique([districtId, code])
+  @@map("constituencies")
+}
+
+model PollingStation {
+  id              String       @id @default(cuid())
+  number          String
+  name            String       // e.g. "Tuhiyaa (M.no. 1 Se 226)"
+  houseRangeStart String?
+  houseRangeEnd   String?
+  constituencyId  String
+  constituency    Constituency @relation(fields: [constituencyId], references: [id])
+
+  @@unique([constituencyId, number])
+  @@map("polling_stations")
+}
+
+// ── Enums ─────────────────────────────────────────────────────────────────────
+
+enum Role {
+  CITIZEN
+  CIVIC_ADMIN
+}
+
+// ── LangGraph Checkpointer Tables (ms2-agent owned) ──────────────────────────
+// These 4 tables are created and managed EXCLUSIVELY by ms2-agent's
+// langgraph-checkpoint-postgres PostgresSaver (via checkpointer.setup()).
+// They are NOT Prisma models — Prisma does not manage them.
+//
+// ⚠️  NEVER run `prisma db push` with --accept-data-loss flag without
+//     restarting ms2-agent afterwards, or these tables will be dropped
+//     and the LangGraph agent will fail with "relation does not exist".
+//
+// Tables: checkpoints | checkpoint_blobs | checkpoint_writes | checkpoint_migrations

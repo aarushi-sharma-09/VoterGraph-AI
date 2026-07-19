@@ -21,3 +21,10 @@ docker-compose.override.yml
 # OS Files
 .DS_Store
 Thumbs.db
+
+# Test and scratch files
+test_*.py
+test_*.js
+query.py
+patch_*.py
+.scratch/

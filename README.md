@@ -111,11 +111,23 @@ npm run dev
 
 # Start ms2 (Python/FastAPI Agent)
 cd ../ms2-agent
+python3 -m venv venv
+source venv/bin/activate
 pip install -r requirements.txt
-uvicorn main:app --reload --port 8000
+uvicorn app.main:app --reload --port 8000
 
-Access the UI at http://localhost:3001
+# Start Frontend (React/Vite)
+cd ../frontend
+npm install
+npm run dev
 ```
 
-###Figma Wireframe Link
-```https://www.figma.com/design/pBN8BWNiixFtxkAQxjOrL0/Untitled?node-id=0-1&t=GLiWKt6AYMZxn5o4-1```
+Access the UI at http://localhost:5173
+Access the Backend API at http://localhost:3001
+Access the Agent API at http://localhost:8000
+
+### Figma Wireframe Link
+[https://www.figma.com/design/pBN8BWNiixFtxkAQxjOrL0/Untitled](https://www.figma.com/design/pBN8BWNiixFtxkAQxjOrL0/Untitled?node-id=0-1&t=GLiWKt6AYMZxn5o4-1)
+
+## 🚀 Production Deployment (Milestone 4)
+Please refer to the `deployment_guide.md` file in the repository for exact step-by-step instructions on deploying the dual-backends to AWS EC2, the frontend to Vercel, and configuring remote PostgreSQL and Neo4j AuraDB instances.

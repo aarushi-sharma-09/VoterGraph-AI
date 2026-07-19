@@ -1,5 +1,3 @@
-version: "3.9"
-
 # ─────────────────────────────────────────────────────────────────────────────
 # VoterGraph.ai — Local Development Infrastructure
 #
@@ -21,7 +19,7 @@ services:
     container_name: votergraph_postgres
     restart: unless-stopped
     ports:
-      - "5432:5432"                     # exposed to localhost so ms1-core can connect
+      - "5433:5432"                     # 5433 on host → 5432 in container (avoids conflict with local Mac Postgres)
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}

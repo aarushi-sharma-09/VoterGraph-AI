@@ -1,0 +1,763 @@
+import { useState } from "react";
+import axios from "axios";
+import {
+  LogIn,
+  Plus,
+  Send,
+  ChevronDown,
+  ChevronUp,
+  Download,
+  LogOut,
+  Upload,
+  CheckCircle,
+  Clock,
+  LayoutDashboard,
+  MessageSquare,
+  Shield,
+  User,
+  X,
+  Globe,
+} from "lucide-react";
+
+type Screen = "login" | "chat" | "admin";
+
+const HISTORY: any[] = [];
+
+const INGESTION_ROWS = [
+  {
+    file: "Ward_4_2002.json",
+    ward: "Ward 4",
+    nodes: "1,042",
+    dedup: "14.2% Duplicates Merged",
+    status: "active",
+  },
+  {
+    file: "Ward_7_1997.csv",
+    ward: "Ward 7",
+    nodes: "876",
+    dedup: "9.8% Duplicates Merged",
+    status: "active",
+  },
+  {
+    file: "Ward_2_2004.pdf",
+    ward: "Ward 2",
+    nodes: "2,314",
+    dedup: "21.5% Duplicates Merged",
+    status: "processing",
+  },
+];
+
+// ─── Login Screen ────────────────────────────────────────────────────────────
+
+function LoginScreen({ onLogin }: { onLogin: (role: string, email: string) => void }) {
+  const [tab, setTab] = useState<"citizen" | "admin">("citizen");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [isRegistering, setIsRegistering] = useState(false);
+
+  const handleLogin = async () => {
+    try {
+      setLoading(true);
+      const res = await axios.post("http://localhost:3001/api/auth/login", { email, password });
+      localStorage.setItem("token", res.data.token);
+      onLogin(res.data.user.role, res.data.user.email);
+    } catch (err: any) {
+      console.error(err);
+      alert(err.response?.data?.message || "Login failed. Check console.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRegister = async () => {
+    if (password.length < 8) {
+      alert("Password must be at least 8 characters.");
+      return;
+    }
+    try {
+      setLoading(true);
+      await axios.post("http://localhost:3001/api/auth/register", { email, password });
+      // Auto-login after successful registration
+      const res = await axios.post("http://localhost:3001/api/auth/login", { email, password });
+      localStorage.setItem("token", res.data.token);
+      onLogin(res.data.user.role, res.data.user.email);
+    } catch (err: any) {
+      console.error(err);
+      alert(err.response?.data?.message || "Registration failed.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen w-full flex" style={{ fontFamily: "Inter, sans-serif" }}>
+      {/* Left branding panel */}
+      <div className="hidden lg:flex w-1/2 bg-[#1E3A8A] flex-col justify-between p-12 relative overflow-hidden">
+        {/* Subtle geometric decoration */}
+        <div className="absolute top-0 right-0 w-96 h-96 rounded-full opacity-10 bg-white translate-x-32 -translate-y-32" />
+        <div className="absolute bottom-0 left-0 w-64 h-64 rounded-full opacity-5 bg-white -translate-x-16 translate-y-16" />
+
+        <div className="relative z-10">
+          <div className="flex items-center gap-3 mb-12">
+            <div className="w-9 h-9 rounded bg-white/20 flex items-center justify-center">
+              <Shield className="w-5 h-5 text-white" />
+            </div>
+            <span className="text-white font-semibold text-lg tracking-tight">VoterGraph.ai</span>
+          </div>
+
+          <div className="max-w-sm">
+            <h1 className="text-white text-4xl font-light leading-tight mb-6">
+              Historical Lineage<br />
+              <span className="font-semibold">Verification</span>
+            </h1>
+            <p className="text-blue-200 text-base leading-relaxed">
+              Query electoral rolls in natural language. Every answer is backed by Neo4j graph traversal and Double Metaphone phonetic matching — zero hallucination.
+            </p>
+          </div>
+        </div>
+
+        <div className="relative z-10 space-y-3">
+          {[
+            { icon: "🔒", label: "Express.js + PostgreSQL verified sessions" },
+            { icon: "🧬", label: "Neo4j graph traversal on 10M+ records" },
+            { icon: "🔤", label: "Double Metaphone phonetic deduplication" },
+          ].map((f) => (
+            <div key={f.label} className="flex items-center gap-3">
+              <span className="text-sm">{f.icon}</span>
+              <span className="text-blue-200 text-sm">{f.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Right login panel */}
+      <div className="flex-1 bg-[#F8FAFC] flex items-center justify-center p-8">
+        <div className="w-full max-w-sm">
+          {/* Mobile logo */}
+          <div className="lg:hidden flex items-center gap-2 mb-8">
+            <Shield className="w-6 h-6 text-[#1E3A8A]" />
+            <span className="font-semibold text-[#1E3A8A]">VoterGraph.ai</span>
+          </div>
+
+          <h2 className="text-2xl font-semibold text-[#0F172A] mb-1">{isRegistering ? "Register" : "Sign in"}</h2>
+          <p className="text-[#64748B] text-sm mb-8">{isRegistering ? "Create your account for SIR Verification Access" : "Access the SIR verification system"}</p>
+
+          {/* Portal toggle */}
+          <div className="flex rounded-lg border border-[#E2E8F0] bg-white p-1 mb-6">
+            {(["citizen", "admin"] as const).map((t) => (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${
+                  tab === t
+                    ? "bg-[#1E3A8A] text-white shadow-sm"
+                    : "text-[#64748B] hover:text-[#0F172A]"
+                }`}
+              >
+                {t === "citizen" ? "Citizen Portal" : "Civic Admin Portal"}
+              </button>
+            ))}
+          </div>
+
+          {/* Form */}
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-[#0F172A] mb-1.5">
+                Email Address
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.gov.in"
+                className="w-full px-3.5 py-2.5 rounded-lg border border-[#E2E8F0] bg-white text-[#0F172A] text-sm placeholder:text-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#2563EB]/30 focus:border-[#2563EB] transition"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-[#0F172A] mb-1.5">
+                Password
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full px-3.5 py-2.5 rounded-lg border border-[#E2E8F0] bg-white text-[#0F172A] text-sm placeholder:text-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#2563EB]/30 focus:border-[#2563EB] transition"
+              />
+            </div>
+
+            <button
+              onClick={isRegistering ? handleRegister : handleLogin}
+              disabled={loading}
+              className="w-full py-2.5 bg-[#1E3A8A] hover:bg-[#1e40af] text-white text-sm font-medium rounded-lg flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+            >
+              <LogIn className="w-4 h-4" />
+              {loading 
+                ? (isRegistering ? "Registering..." : "Authenticating...") 
+                : isRegistering 
+                  ? "Register" 
+                  : (tab === "citizen" ? "Sign In" : "Generate Verified Session")
+              }
+            </button>
+          </div>
+
+          <p className="mt-6 text-center text-sm text-[#64748B]">
+            {isRegistering ? "Already have an account? " : "New user? "}
+            <button 
+              onClick={() => setIsRegistering(!isRegistering)} 
+              className="text-[#2563EB] hover:underline font-medium"
+            >
+              {isRegistering ? "Sign In instead" : "Register for SIR Verification Access"}
+            </button>
+          </p>
+
+          <p className="mt-8 text-center text-xs text-[#94A3B8]">
+            Secured by Election Commission of India · TLS 1.3
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Graph Evidence Drawer ───────────────────────────────────────────────────
+
+function GraphEvidenceDrawer({ onClose, cypher }: { onClose: () => void; cypher?: string }) {
+  return (
+    <div className="mt-3 rounded-xl border border-[#E2E8F0] bg-white shadow-sm overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#E2E8F0] bg-[#F8FAFC]">
+        <div className="flex items-center gap-2">
+          <span className="text-base">📊</span>
+          <span className="text-sm font-semibold text-[#0F172A]">
+            Verify Graph Evidence
+          </span>
+          <span className="ml-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-xs font-medium">
+            Zero-Hallucination Proof
+          </span>
+        </div>
+        <button
+          onClick={onClose}
+          className="text-[#94A3B8] hover:text-[#64748B] transition-colors"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-0 divide-y md:divide-y-0 md:divide-x divide-[#E2E8F0]">
+        {/* Section 1: Cypher Query */}
+        <div className="p-5">
+          <p className="text-xs font-semibold text-[#64748B] uppercase tracking-wider mb-3">
+            Executed Cypher Logic
+          </p>
+          <div className="rounded-lg bg-[#0F172A] p-4 overflow-x-auto">
+            <pre
+              className="text-sm leading-relaxed text-[#E2E8F0]"
+              style={{ fontFamily: "JetBrains Mono, monospace", whiteSpace: "pre-wrap" }}
+            >
+              {cypher || "No Cypher query available for this response."}
+            </pre>
+          </div>
+          <div className="mt-3 flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-emerald-400" />
+            <span className="text-xs text-[#64748B]">
+              Query executed successfully
+            </span>
+          </div>
+        </div>
+
+        {/* Section 2: Visual Graph */}
+        <div className="p-5">
+          <p className="text-xs font-semibold text-[#64748B] uppercase tracking-wider mb-3">
+            Visual Node Graph
+          </p>
+
+          <div className="relative bg-[#F8FAFC] rounded-lg border border-[#E2E8F0] p-4 h-44 flex items-center justify-center">
+            {/* Phonetic label */}
+            <div className="absolute top-3 left-1/2 -translate-x-1/2 px-2.5 py-1 rounded-full bg-[#EEF2FF] border border-[#C7D2FE] text-xs font-medium text-[#1E3A8A] whitespace-nowrap">
+              Phonetic Match: Double Metaphone Index Verified
+            </div>
+
+            {/* SVG graph */}
+            <svg viewBox="0 0 260 120" className="w-full h-full mt-4">
+              {/* Arrows */}
+              <defs>
+                <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+                  <path d="M0,0 L0,6 L8,3 z" fill="#94A3B8" />
+                </marker>
+              </defs>
+              <line x1="75" y1="45" x2="118" y2="75" stroke="#94A3B8" strokeWidth="1.5" markerEnd="url(#arrow)" />
+              <line x1="185" y1="45" x2="142" y2="75" stroke="#94A3B8" strokeWidth="1.5" markerEnd="url(#arrow)" />
+
+              {/* LIVES_IN labels */}
+              <text x="78" y="65" fontSize="8" fill="#94A3B8" fontFamily="JetBrains Mono, monospace">LIVES_IN</text>
+              <text x="148" y="65" fontSize="8" fill="#94A3B8" fontFamily="JetBrains Mono, monospace">LIVES_IN</text>
+
+              {/* Person: Suresh node */}
+              <circle cx="75" cy="38" r="28" fill="#EEF2FF" stroke="#1E3A8A" strokeWidth="1.5" />
+              <text x="75" y="34" textAnchor="middle" fontSize="7.5" fill="#1E3A8A" fontWeight="600" fontFamily="Inter, sans-serif">Person</text>
+              <text x="75" y="45" textAnchor="middle" fontSize="8.5" fill="#0F172A" fontFamily="Inter, sans-serif">Suresh</text>
+
+              {/* Person: Ramesh node */}
+              <circle cx="185" cy="38" r="28" fill="#EEF2FF" stroke="#1E3A8A" strokeWidth="1.5" />
+              <text x="185" y="34" textAnchor="middle" fontSize="7.5" fill="#1E3A8A" fontWeight="600" fontFamily="Inter, sans-serif">Person</text>
+              <text x="185" y="45" textAnchor="middle" fontSize="8.5" fill="#0F172A" fontFamily="Inter, sans-serif">Ramesh</text>
+
+              {/* House: 42 node */}
+              <rect x="104" y="78" width="52" height="34" rx="4" fill="#DCFCE7" stroke="#16A34A" strokeWidth="1.5" />
+              <text x="130" y="91" textAnchor="middle" fontSize="7.5" fill="#15803D" fontWeight="600" fontFamily="Inter, sans-serif">House</text>
+              <text x="130" y="103" textAnchor="middle" fontSize="9" fill="#0F172A" fontFamily="Inter, sans-serif">No. 42</text>
+            </svg>
+          </div>
+
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            {[
+              { label: "SRS", name: "Suresh" },
+              { label: "RMS", name: "Ramesh" },
+              { label: "H42", name: "House 42" },
+            ].map((n) => (
+              <div key={n.name} className="text-center p-2 rounded bg-[#F1F5F9]">
+                <div
+                  className="text-xs font-mono font-semibold text-[#1E3A8A]"
+                  style={{ fontFamily: "JetBrains Mono, monospace" }}
+                >
+                  {n.label}
+                </div>
+                <div className="text-xs text-[#64748B] mt-0.5">{n.name}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Action bar */}
+      <div className="px-5 py-4 border-t border-[#E2E8F0] bg-[#F8FAFC] flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-2 text-xs text-[#64748B]">
+          <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
+          Verified against Ward 4 Electoral Roll, 2002 · Source: Election Commission DB
+        </div>
+        <button className="flex items-center gap-2 px-4 py-2 bg-[#1E3A8A] hover:bg-[#1e40af] text-white text-sm font-medium rounded-lg transition-colors">
+          <Download className="w-4 h-4" />
+          Download Official Lineage Proof (.PDF)
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Chat Screen ─────────────────────────────────────────────────────────────
+
+function ChatScreen({ userRole, userEmail, onAdmin, onLogout }: { userRole: string; userEmail: string; onAdmin: () => void; onLogout: () => void }) {
+  const [evidenceOpen, setEvidenceOpen] = useState<number | null>(null);
+  const [input, setInput] = useState("");
+  const [language, setLanguage] = useState("English");
+  const [loading, setLoading] = useState(false);
+  const [messages, setMessages] = useState<any[]>([]);
+
+  const handleSend = async () => {
+    if (!input.trim()) return;
+
+    const userMsg = { role: "user", text: input, timestamp: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) };
+    setMessages((prev) => [...prev, userMsg]);
+    setInput("");
+    setLoading(true);
+
+    try {
+      const token = localStorage.getItem("token");
+      const res = await axios.post(
+        "http://localhost:3001/api/chat",
+        { message: userMsg.text },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      const agentMsg = {
+        role: "agent",
+        text: res.data.reply,
+        cypher: res.data.cypher_query,
+        nodes: res.data.graph_nodes,
+        timestamp: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+      };
+      setMessages((prev) => [...prev, agentMsg]);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to send message. Check console.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="h-screen w-full flex" style={{ fontFamily: "Inter, sans-serif" }}>
+      {/* Sidebar */}
+      <aside className="w-64 flex-shrink-0 bg-white border-r border-[#E2E8F0] flex flex-col">
+        <div className="p-4 border-b border-[#E2E8F0]">
+          <div className="flex items-center gap-2 mb-4">
+            <Shield className="w-5 h-5 text-[#1E3A8A]" />
+            <span className="font-semibold text-[#0F172A] text-sm tracking-tight">VoterGraph.ai</span>
+          </div>
+          <button 
+            onClick={() => { setMessages([]); setInput(""); setEvidenceOpen(null); }} 
+            className="w-full flex items-center justify-center gap-2 py-2.5 bg-[#1E3A8A] hover:bg-[#1e40af] text-white text-sm font-medium rounded-lg transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            New Lineage Search
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-3">
+          <p className="text-[10px] font-semibold text-[#94A3B8] uppercase tracking-wider px-2 mb-2">
+            Recent Verification Sessions
+          </p>
+          <div className="space-y-0.5">
+            {HISTORY.length === 0 && (
+              <p className="text-xs text-[#94A3B8] px-2 mt-4 italic">No recent sessions</p>
+            )}
+            {HISTORY.map((h, i) => (
+              <button
+                key={h.id}
+                className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-colors ${
+                  i === 0
+                    ? "bg-[#EEF2FF] text-[#1E3A8A] font-medium"
+                    : "text-[#475569] hover:bg-[#F8FAFC]"
+                }`}
+              >
+                <div className="flex items-start gap-2">
+                  <MessageSquare className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 opacity-60" />
+                  <span className="leading-snug">{h.label}</span>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Nav buttons */}
+        {userRole === 'CIVIC_ADMIN' && (
+          <div className="p-3 border-t border-[#E2E8F0] space-y-1">
+            <button
+              onClick={onAdmin}
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-[#64748B] hover:bg-[#F8FAFC] transition-colors"
+            >
+              <LayoutDashboard className="w-4 h-4" />
+              Admin Dashboard
+            </button>
+          </div>
+        )}
+
+        {/* User profile card */}
+        <div className="p-3 border-t border-[#E2E8F0]">
+          <div className="flex items-center gap-3 p-3 rounded-lg bg-[#F8FAFC]">
+            <div className="w-8 h-8 rounded-full bg-[#1E3A8A] flex items-center justify-center flex-shrink-0">
+              <User className="w-4 h-4 text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-[#0F172A] truncate">{userEmail || "citizen@example.gov.in"}</p>
+              <p className="text-[10px] text-[#94A3B8]">{userRole === 'CIVIC_ADMIN' ? "Admin Access" : "SIR Verified Access"}</p>
+            </div>
+            <button onClick={onLogout} className="text-[#94A3B8] hover:text-[#64748B] transition-colors">
+              <LogOut className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      {/* Main chat */}
+      <div className="flex-1 flex flex-col min-w-0 bg-[#F8FAFC]">
+        {/* Top bar */}
+        <div className="h-14 border-b border-[#E2E8F0] bg-white flex items-center px-6 gap-3">
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-[#0F172A]">
+              {messages.length === 0 ? "New Verification Session" : "Active Verification Session"}
+            </p>
+            <p className="text-xs text-[#94A3B8]">Electoral Roll Graph Analysis</p>
+          </div>
+          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-xs font-medium text-emerald-700">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            Neo4j Connected
+          </span>
+        </div>
+
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
+          {messages.length === 0 && (
+            <div className="text-center text-[#94A3B8] text-sm mt-10">
+              Start a conversation by typing below.
+            </div>
+          )}
+          {messages.map((msg, idx) => (
+            <div key={idx}>
+              {msg.role === "user" ? (
+                <div className="flex justify-end">
+                  <div className="max-w-xl">
+                    <div className="bg-[#1E3A8A] text-white rounded-2xl rounded-tr-sm px-5 py-3.5 text-sm leading-relaxed shadow-sm">
+                      {msg.text}
+                    </div>
+                    <p className="text-right text-[10px] text-[#94A3B8] mt-1.5 mr-1">
+                      citizen@example.gov.in · {msg.timestamp}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex justify-start">
+                  <div className="max-w-2xl w-full">
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-full bg-[#EEF2FF] border border-[#C7D2FE] flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <Shield className="w-4 h-4 text-[#1E3A8A]" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="bg-white rounded-2xl rounded-tl-sm px-5 py-4 text-sm leading-relaxed shadow-sm border border-[#E2E8F0] text-[#0F172A]">
+                          <p>{msg.text}</p>
+                          
+                          {/* Evidence toggle */}
+                          {msg.cypher && (
+                            <button
+                              onClick={() => setEvidenceOpen(evidenceOpen === idx ? null : idx)}
+                              className="mt-4 flex items-center gap-2 text-[#2563EB] text-xs font-medium hover:text-[#1E3A8A] transition-colors"
+                            >
+                              {evidenceOpen === idx ? (
+                                <ChevronUp className="w-3.5 h-3.5" />
+                              ) : (
+                                <ChevronDown className="w-3.5 h-3.5" />
+                              )}
+                              {evidenceOpen === idx ? "Hide" : "View"} Graph Evidence (Zero-Hallucination Proof)
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Evidence drawer */}
+                        {evidenceOpen === idx && <GraphEvidenceDrawer onClose={() => setEvidenceOpen(null)} cypher={msg.cypher} />}
+
+                        <p className="text-[10px] text-[#94A3B8] mt-1.5 ml-1">
+                          VoterGraph AI · {msg.timestamp}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+
+          {/* Loading Indicator */}
+          {loading && (
+            <div className="flex justify-start">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-[#EEF2FF] border border-[#C7D2FE] flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <Shield className="w-4 h-4 text-[#1E3A8A] animate-pulse" />
+                </div>
+                <div className="bg-white rounded-2xl rounded-tl-sm px-5 py-4 text-sm shadow-sm border border-[#E2E8F0] flex gap-1.5 items-center">
+                  <span className="w-2 h-2 bg-[#94A3B8] rounded-full animate-bounce"></span>
+                  <span className="w-2 h-2 bg-[#94A3B8] rounded-full animate-bounce" style={{animationDelay: '0.15s'}}></span>
+                  <span className="w-2 h-2 bg-[#94A3B8] rounded-full animate-bounce" style={{animationDelay: '0.3s'}}></span>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Input bar */}
+        <div className="px-6 pb-6">
+          <div className="bg-white border border-[#E2E8F0] rounded-xl shadow-sm flex items-end gap-2 p-3">
+            <textarea
+              rows={2}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Ask about ancestral names, house numbers, or ward lineages..."
+              className="flex-1 resize-none text-sm text-[#0F172A] placeholder:text-[#94A3B8] focus:outline-none leading-relaxed bg-transparent"
+            />
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#E2E8F0] cursor-pointer hover:bg-[#F8FAFC] transition-colors">
+                <Globe className="w-3.5 h-3.5 text-[#64748B]" />
+                <select
+                  value={language}
+                  onChange={(e) => setLanguage(e.target.value)}
+                  className="text-xs text-[#475569] font-medium bg-transparent cursor-pointer focus:outline-none"
+                >
+                  <option>English</option>
+                  <option>Hinglish</option>
+                  <option>Hindi</option>
+                </select>
+              </div>
+              <button
+                onClick={handleSend}
+                disabled={loading}
+                className="w-9 h-9 rounded-lg bg-[#1E3A8A] hover:bg-[#1e40af] flex items-center justify-center transition-colors disabled:opacity-50"
+              >
+                <Send className="w-4 h-4 text-white" />
+              </button>
+            </div>
+          </div>
+          <p className="text-center text-[10px] text-[#94A3B8] mt-2">
+            VoterGraph AI may produce errors. Verify critical lineage data against official records.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Admin Dashboard ──────────────────────────────────────────────────────────
+
+function AdminScreen({ onBack }: { onBack: () => void }) {
+  const [dragOver, setDragOver] = useState(false);
+
+  return (
+    <div className="min-h-screen bg-[#F8FAFC]" style={{ fontFamily: "Inter, sans-serif" }}>
+      {/* Top nav */}
+      <header className="bg-white border-b border-[#E2E8F0] px-8 h-14 flex items-center gap-4">
+        <div className="flex items-center gap-2 mr-6">
+          <Shield className="w-5 h-5 text-[#1E3A8A]" />
+          <span className="font-semibold text-[#0F172A] text-sm">VoterGraph.ai</span>
+        </div>
+        <div className="flex items-center gap-1 text-sm text-[#94A3B8]">
+          <button onClick={onBack} className="hover:text-[#0F172A] transition-colors">Chat</button>
+          <span>/</span>
+          <span className="text-[#0F172A] font-medium">Admin Ingestion</span>
+        </div>
+        <div className="ml-auto">
+          <span className="px-3 py-1.5 rounded-lg bg-[#FEF9C3] border border-[#FDE047] text-xs font-medium text-[#854D0E]">
+            🔐 Admin Access
+          </span>
+        </div>
+      </header>
+
+      <main className="max-w-5xl mx-auto px-8 py-8">
+        <div className="mb-8">
+          <h1 className="text-2xl font-semibold text-[#0F172A] mb-1">Ingestion Dashboard</h1>
+          <p className="text-[#64748B] text-sm">Upload electoral roll documents for Neo4j ingestion and phonetic deduplication.</p>
+        </div>
+
+        {/* Stats row */}
+        <div className="grid grid-cols-3 gap-4 mb-8">
+          {[
+            { label: "Total Nodes in Graph", value: "4,232", icon: "🧬", color: "text-[#1E3A8A]" },
+            { label: "Phonetic Dedup Rate (avg)", value: "15.2%", icon: "🔤", color: "text-emerald-600" },
+            { label: "Active Electoral Rolls", value: "3", icon: "📋", color: "text-[#0F172A]" },
+          ].map((s) => (
+            <div key={s.label} className="bg-white rounded-xl border border-[#E2E8F0] p-5">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium text-[#64748B]">{s.label}</span>
+                <span className="text-base">{s.icon}</span>
+              </div>
+              <p className={`text-2xl font-semibold ${s.color}`}>{s.value}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Upload box */}
+        <div
+          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={(e) => { e.preventDefault(); setDragOver(false); }}
+          className={`rounded-xl border-2 border-dashed transition-colors mb-8 ${
+            dragOver
+              ? "border-[#2563EB] bg-[#EEF2FF]"
+              : "border-[#CBD5E1] bg-white hover:border-[#94A3B8]"
+          } p-12 flex flex-col items-center justify-center text-center cursor-pointer`}
+        >
+          <div className="w-12 h-12 rounded-full bg-[#EEF2FF] flex items-center justify-center mb-4">
+            <Upload className="w-6 h-6 text-[#1E3A8A]" />
+          </div>
+          <p className="text-sm font-medium text-[#0F172A] mb-1">
+            Upload Electoral Roll (JSON / CSV / PDF Scanner)
+          </p>
+          <p className="text-xs text-[#64748B] mb-4">
+            Drag and drop files here, or click to browse
+          </p>
+          <button className="px-4 py-2 bg-[#1E3A8A] hover:bg-[#1e40af] text-white text-sm font-medium rounded-lg transition-colors">
+            Choose Files
+          </button>
+          <p className="text-[10px] text-[#94A3B8] mt-3">
+            Supports JSON, CSV, PDF · Max 50MB per file
+          </p>
+        </div>
+
+        {/* Status table */}
+        <div className="bg-white rounded-xl border border-[#E2E8F0] overflow-hidden">
+          <div className="px-6 py-4 border-b border-[#E2E8F0] flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-[#0F172A]">Recently Processed Files</h2>
+            <span className="text-xs text-[#94A3B8]">Auto-refreshes every 30s</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-[#E2E8F0] bg-[#F8FAFC]">
+                  {["File Name", "Ward No.", "Nodes Created", "Phonetic Deduplication Rate", "Status"].map((h) => (
+                    <th key={h} className="px-6 py-3 text-left text-[10px] font-semibold text-[#64748B] uppercase tracking-wider">
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {INGESTION_ROWS.map((row, i) => (
+                  <tr key={i} className="border-b border-[#F1F5F9] hover:bg-[#F8FAFC] transition-colors last:border-0">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">
+                          {row.file.endsWith(".json") ? "🗂️" : row.file.endsWith(".csv") ? "📊" : "📄"}
+                        </span>
+                        <span
+                          className="font-medium text-[#0F172A]"
+                          style={{ fontFamily: "JetBrains Mono, monospace", fontSize: "13px" }}
+                        >
+                          {row.file}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-[#475569]">{row.ward}</td>
+                    <td className="px-6 py-4">
+                      <span className="font-semibold text-[#0F172A]">{row.nodes}</span>
+                      <span className="text-[#94A3B8] ml-1 text-xs">nodes</span>
+                    </td>
+                    <td className="px-6 py-4 text-[#475569]">{row.dedup}</td>
+                    <td className="px-6 py-4">
+                      {row.status === "active" ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-xs font-medium text-emerald-700">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                          Active in Neo4j
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-xs font-medium text-amber-700">
+                          <Clock className="w-3 h-3" />
+                          Processing
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+// ─── Root App ─────────────────────────────────────────────────────────────────
+
+export default function App() {
+  const [screen, setScreen] = useState<Screen>("login");
+  const [userRole, setUserRole] = useState<string>("CITIZEN");
+  const [userEmail, setUserEmail] = useState<string>("");
+
+  return (
+    <div className="size-full bg-background" style={{ fontFamily: "Inter, sans-serif" }}>
+      {screen === "login" && <LoginScreen onLogin={(role, email) => {
+        setUserRole(role);
+        setUserEmail(email);
+        setScreen(role === 'CIVIC_ADMIN' ? 'admin' : 'chat');
+      }} />}
+      {screen === "chat" && (
+        <ChatScreen 
+          userRole={userRole}
+          userEmail={userEmail}
+          onAdmin={() => setScreen("admin")} 
+          onLogout={() => { setScreen("login"); localStorage.removeItem("token"); }} 
+        />
+      )}
+      {screen === "admin" && <AdminScreen onBack={() => setScreen("chat")} />}
+    </div>
+  );
+}
