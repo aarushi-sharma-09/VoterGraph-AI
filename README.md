@@ -129,5 +129,4 @@ Access the Agent API at http://localhost:8000
 ### Figma Wireframe Link
 [https://www.figma.com/design/pBN8BWNiixFtxkAQxjOrL0/Untitled](https://www.figma.com/design/pBN8BWNiixFtxkAQxjOrL0/Untitled?node-id=0-1&t=GLiWKt6AYMZxn5o4-1)
 
-## 🚀 Production Deployment (Milestone 4)
-Please refer to the `deployment_guide.md` file in the repository for exact step-by-step instructions on deploying the dual-backends to AWS EC2, the frontend to Vercel, and configuring remote PostgreSQL and Neo4j AuraDB instances.
+
