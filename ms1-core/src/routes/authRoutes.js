@@ -3,7 +3,7 @@
 // Auth Route Definitions
 // ─────────────────────────────────────────────────────────────────────────────
 const express = require('express');
-const { register, login, verifyOtp, resendOtp } = require('../controllers/authController');
+const { register, login, verifyOtp, resendOtp, forgotPassword, resetPassword } = require('../controllers/authController');
 
 const router = express.Router();
 
@@ -18,5 +18,11 @@ router.post('/verify-otp', verifyOtp);
 
 // POST /api/auth/resend-otp → Resend a fresh OTP to an unverified user
 router.post('/resend-otp', resendOtp);
+
+// POST /api/auth/forgot-password → Generate OTP for password reset and send via SES
+router.post('/forgot-password', forgotPassword);
+
+// POST /api/auth/reset-password → Verify OTP and set new password
+router.post('/reset-password', resetPassword);
 
 module.exports = router;

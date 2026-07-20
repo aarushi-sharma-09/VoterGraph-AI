@@ -65,6 +65,12 @@ function LoginScreen({ onLogin }: { onLogin: (role: string, email: string) => vo
   const [otpSuccess, setOtpSuccess] = useState("");
   const [resending, setResending] = useState(false);
 
+  // Forgot password state
+  const [forgotStep, setForgotStep] = useState(false);
+  const [resetStep, setResetStep] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [resetUserId, setResetUserId] = useState("");
+
   const handleLogin = async () => {
     try {
       setLoading(true);
@@ -140,6 +146,41 @@ function LoginScreen({ onLogin }: { onLogin: (role: string, email: string) => vo
     }
   };
 
+  const handleForgotPassword = async () => {
+    if (!forgotEmail) { alert("Enter email first"); return; }
+    try {
+      setLoading(true);
+      const res = await axios.post(`/api/auth/forgot-password`, { email: forgotEmail });
+      if (res.data.userId) { setResetUserId(res.data.userId); }
+      setOtpSuccess(res.data.message);
+      setForgotStep(false);
+      setResetStep(true);
+    } catch (err: any) {
+      alert(err.response?.data?.message || "Request failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (otp.length !== 6 || password.length < 8) {
+      setOtpError("Enter 6-digit OTP and new password (min 8 chars)");
+      return;
+    }
+    try {
+      setLoading(true);
+      await axios.post(`/api/auth/reset-password`, { userId: resetUserId, otp, newPassword: password });
+      alert("Password reset successfully. You can now log in.");
+      setResetStep(false);
+      setOtp("");
+      setPassword("");
+    } catch (err: any) {
+      setOtpError(err.response?.data?.message || "Reset failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen w-full flex" style={{ fontFamily: "Inter, sans-serif" }}>
       {/* Left branding panel */}
@@ -190,8 +231,66 @@ function LoginScreen({ onLogin }: { onLogin: (role: string, email: string) => vo
             <span className="font-semibold text-[#1E3A8A]">VoterGraph.ai</span>
           </div>
 
-          {/* ── OTP Step ──────────────────────────────────────────────────── */}
-          {otpStep ? (
+          {/* ── Forgot Password Step 1 ────────────────────────────────────────── */}
+          {forgotStep ? (
+            <>
+              <h2 className="text-2xl font-semibold text-[#0F172A] mb-1">Reset Password</h2>
+              <p className="text-[#64748B] text-sm mb-6">Enter your email to receive a reset code.</p>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-[#0F172A] mb-1.5">Email Address</label>
+                <input
+                  type="email"
+                  value={forgotEmail}
+                  onChange={(e) => setForgotEmail(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-lg border border-[#E2E8F0] bg-white text-[#0F172A] text-sm focus:outline-none focus:border-[#2563EB]"
+                />
+              </div>
+              <button
+                onClick={handleForgotPassword}
+                disabled={loading}
+                className="w-full py-2.5 bg-[#1E3A8A] text-white text-sm font-medium rounded-lg mb-4"
+              >
+                {loading ? "Sending..." : "Send Reset Code"}
+              </button>
+              <button onClick={() => setForgotStep(false)} className="text-sm text-[#2563EB] hover:underline w-full text-center">
+                Back to Sign in
+              </button>
+            </>
+          ) : resetStep ? (
+            <>
+              <h2 className="text-2xl font-semibold text-[#0F172A] mb-1">Enter Reset Code</h2>
+              <p className="text-[#64748B] text-sm mb-6">Enter the 6-digit code and your new password.</p>
+              {otpSuccess && <div className="mb-4 text-emerald-700 text-sm bg-emerald-50 p-2 rounded">{otpSuccess}</div>}
+              {otpError && <div className="mb-4 text-red-700 text-sm bg-red-50 p-2 rounded">{otpError}</div>}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-[#0F172A] mb-1.5">6-Digit Code</label>
+                <input
+                  type="text"
+                  maxLength={6}
+                  value={otp}
+                  onChange={(e) => { setOtp(e.target.value.replace(/\D/g, "")); setOtpError(""); }}
+                  className="w-full px-3.5 py-2.5 rounded-lg border border-[#E2E8F0] bg-white text-[#0F172A] tracking-[0.5em] text-center mb-4"
+                />
+                <label className="block text-sm font-medium text-[#0F172A] mb-1.5">New Password</label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => { setPassword(e.target.value); setOtpError(""); }}
+                  className="w-full px-3.5 py-2.5 rounded-lg border border-[#E2E8F0] bg-white text-[#0F172A]"
+                />
+              </div>
+              <button
+                onClick={handleResetPassword}
+                disabled={loading || otp.length !== 6 || password.length < 8}
+                className="w-full py-2.5 bg-[#1E3A8A] text-white text-sm font-medium rounded-lg mb-4"
+              >
+                {loading ? "Resetting..." : "Set New Password"}
+              </button>
+              <button onClick={() => setResetStep(false)} className="text-sm text-[#2563EB] hover:underline w-full text-center">
+                Cancel
+              </button>
+            </>
+          ) : otpStep ? (
             <>
               <div className="flex items-center justify-center w-14 h-14 rounded-full bg-[#EEF2FF] border border-[#C7D2FE] mb-5 mx-auto">
                 <Shield className="w-6 h-6 text-[#1E3A8A]" />
@@ -322,6 +421,17 @@ function LoginScreen({ onLogin }: { onLogin: (role: string, email: string) => vo
                 {isRegistering ? "Sign In instead" : "Register for SIR Verification Access"}
               </button>
             </p>
+
+            {!isRegistering && (
+              <p className="mt-3 text-center text-sm">
+                <button
+                  onClick={() => { setForgotEmail(email); setForgotStep(true); }}
+                  className="text-[#94A3B8] hover:text-[#0F172A] hover:underline font-medium"
+                >
+                  Forgot Password?
+                </button>
+              </p>
+            )}
 
             <p className="mt-8 text-center text-xs text-[#94A3B8]">
               Secured by Election Commission of India · TLS 1.3

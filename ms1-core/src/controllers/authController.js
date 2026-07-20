@@ -269,4 +269,101 @@ const login = async (req, res) => {
 };
 
 
-module.exports = { register, login, verifyOtp, resendOtp };
+// ── POST /api/auth/forgot-password ────────────────────────────────────────────
+
+const forgotPassword = async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ error: 'ValidationError', message: 'Email is required.' });
+  }
+
+  try {
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      // Return 200 even if user not found to prevent email enumeration
+      return res.status(200).json({ message: 'If an account exists, a reset code has been sent.' });
+    }
+
+    const otp = generateOtp();
+    await createOtpToken(user.id, otp);
+    
+    try {
+      await sendOtpEmail(email, otp);
+      console.log(`[authController] 🔑 Password reset OTP sent to: ${email}`);
+      return res.status(200).json({ message: 'If an account exists, a reset code has been sent.', userId: user.id });
+    } catch (sesErr) {
+      console.error('[authController] SES send failed for password reset:', sesErr.message);
+      return res.status(503).json({ error: 'EmailDeliveryFailed', message: 'Could not send reset email. Please try again later.' });
+    }
+  } catch (err) {
+    console.error('[authController] forgotPassword error:', err);
+    return res.status(500).json({ error: 'InternalServerError', message: 'Password reset request failed.' });
+  }
+};
+
+
+// ── POST /api/auth/reset-password ─────────────────────────────────────────────
+
+const resetPassword = async (req, res) => {
+  const { userId, otp, newPassword } = req.body;
+
+  if (!userId || !otp || !newPassword) {
+    return res.status(400).json({ error: 'ValidationError', message: 'Missing required fields.' });
+  }
+
+  if (newPassword.length < 8) {
+    return res.status(400).json({ error: 'ValidationError', message: 'Password must be at least 8 characters.' });
+  }
+
+  try {
+    const token = await prisma.otpToken.findFirst({
+      where:   { userId, used: false },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (!token) {
+      return res.status(400).json({ error: 'InvalidOtp', message: 'No active OTP found. Please request a new one.' });
+    }
+
+    if (token.expiresAt < new Date()) {
+      await prisma.otpToken.update({ where: { id: token.id }, data: { used: true } });
+      return res.status(400).json({ error: 'OtpExpired', message: 'OTP has expired. Please request a new one.' });
+    }
+
+    if (token.attempts >= MAX_OTP_TRIES) {
+      await prisma.otpToken.update({ where: { id: token.id }, data: { used: true } });
+      return res.status(429).json({ error: 'TooManyAttempts', message: 'Too many incorrect attempts. Please request a new reset code.' });
+    }
+
+    const valid = await bcrypt.compare(String(otp), token.codeHash);
+    if (!valid) {
+      await prisma.otpToken.update({ where: { id: token.id }, data: { attempts: { increment: 1 } } });
+      const remaining = MAX_OTP_TRIES - (token.attempts + 1);
+      return res.status(400).json({
+        error:   'InvalidOtp',
+        message: `Incorrect OTP. ${remaining} attempt${remaining === 1 ? '' : 's'} remaining.`,
+      });
+    }
+
+    // OTP valid: Reset the password
+    const passwordHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
+    await prisma.user.update({
+      where: { id: userId },
+      data:  { passwordHash }
+    });
+    
+    // Invalidate the token
+    await prisma.otpToken.update({ where: { id: token.id }, data: { used: true } });
+
+    console.log(`[authController] 🔑 Password reset successfully for user ID: ${userId}`);
+    return res.status(200).json({ message: 'Password reset successfully. You can now log in.' });
+
+  } catch (err) {
+    console.error('[authController] resetPassword error:', err);
+    return res.status(500).json({ error: 'InternalServerError', message: 'Password reset failed.' });
+  }
+};
+
+
+module.exports = { register, login, verifyOtp, resendOtp, forgotPassword, resetPassword };
