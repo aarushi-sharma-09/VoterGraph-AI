@@ -343,12 +343,42 @@ const getQueueJobStatus = async (req, res) => {
 };
 
 
+// ── PATCH /api/chat/sessions/:sessionId ───────────────────────────────────────
+const renameSession = async (req, res) => {
+  const { sessionId } = req.params;
+  const { title } = req.body;
+  const { userId } = req.user;
+
+  if (!title || title.trim() === '') {
+    return res.status(400).json({ error: 'ValidationError', message: 'Title cannot be empty.' });
+  }
+
+  try {
+    const session = await prisma.session.findFirst({ where: { id: sessionId, userId } });
+    if (!session) {
+      return res.status(404).json({ error: 'NotFound', message: 'Session not found or not owned by user.' });
+    }
+
+    const updatedSession = await prisma.session.update({
+      where: { id: sessionId },
+      data: { title: title.trim().slice(0, 100) },
+    });
+
+    return res.status(200).json({ message: 'Session renamed successfully.', session: updatedSession });
+  } catch (err) {
+    console.error('[chatController] renameSession error:', err);
+    return res.status(500).json({ error: 'InternalServerError', message: 'Could not rename session.' });
+  }
+};
+
+
 module.exports = {
   processChat,
   resumeChat,
   getSessions,
   getSessionById,
   getQueueJobStatus,
+  renameSession,
   // Exported for chatQueueWorker — these share the same counter
   runMs2Query,
   getActiveMs2Requests,

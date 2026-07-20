@@ -5,7 +5,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 const express = require('express');
 const authMiddleware = require('../middleware/authMiddleware');
-const { processChat, getSessions, getSessionById, getQueueJobStatus, resumeChat } = require('../controllers/chatController');
+const { processChat, getSessions, getSessionById, getQueueJobStatus, resumeChat, renameSession } = require('../controllers/chatController');
 
 const router = express.Router();
 
@@ -20,6 +20,9 @@ router.get('/sessions', getSessions);
 
 // GET /api/chat/sessions/:sessionId → Load a specific session's full history
 router.get('/sessions/:sessionId', getSessionById);
+
+// PATCH /api/chat/sessions/:sessionId → Rename a specific session
+router.patch('/sessions/:sessionId', renameSession);
 
 // GET /api/chat/queue/:jobId → Poll status of a queued chat job
 router.get('/queue/:jobId', getQueueJobStatus);

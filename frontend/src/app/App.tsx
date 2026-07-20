@@ -18,6 +18,8 @@ import {
   X,
   Globe,
   Search,
+  Menu,
+  Edit2
 } from "lucide-react";
 
 type Screen = "login" | "chat" | "admin";
@@ -627,6 +629,9 @@ function ChatScreen({ userRole, userEmail, onAdmin, onLogout }: { userRole: stri
   const [sessions, setSessions] = useState<any[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [tempTitle, setTempTitle] = useState("");
 
   
   // Geo Scope States
@@ -742,6 +747,18 @@ useEffect(() => {
     });
   };
 
+  const handleRenameSession = async (sessionId: string, newTitle: string) => {
+    if (!newTitle.trim()) return;
+    try {
+      await axios.patch(`/api/chat/sessions/${sessionId}`, { title: newTitle }, { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } });
+      setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, title: newTitle } : s));
+      setIsEditingTitle(false);
+    } catch(err) {
+      console.error(err);
+      alert("Could not rename session");
+    }
+  };
+
   const processAgentResponse = (data: any) => {
     if (data.sessionId && !currentSessionId) {
       setCurrentSessionId(data.sessionId);
@@ -852,9 +869,13 @@ useEffect(() => {
   };
 
   return (
-    <div className="h-screen w-full flex" style={{ fontFamily: "Inter, sans-serif" }}>
+    <div className="h-screen w-full flex overflow-hidden" style={{ fontFamily: "Inter, sans-serif" }}>
+      {isSidebarOpen && (
+        <div className="fixed inset-0 bg-[#0F172A]/40 z-40 md:hidden transition-opacity" onClick={() => setIsSidebarOpen(false)} />
+      )}
+      
       {/* Sidebar */}
-      <aside className="w-64 flex-shrink-0 bg-white border-r border-[#E2E8F0] flex flex-col">
+      <aside className={`w-64 flex-shrink-0 bg-white border-r border-[#E2E8F0] flex flex-col absolute inset-y-0 left-0 z-50 transform transition-transform duration-300 md:relative md:translate-x-0 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
         <div className="p-4 border-b border-[#E2E8F0]">
           <div className="flex items-center gap-2 mb-4">
             <Shield className="w-5 h-5 text-[#1E3A8A]" />
@@ -890,7 +911,7 @@ useEffect(() => {
               >
                 <div className="flex items-start gap-2">
                   <MessageSquare className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 opacity-60" />
-                  <span className="leading-snug truncate">{"Session " + h.id.slice(-4)}</span>
+                  <span className="leading-snug truncate">{h.title || "Session " + h.id.slice(-4)}</span>
                 </div>
               </button>
             ))}
@@ -930,14 +951,49 @@ useEffect(() => {
       {/* Main Area */}
       <div className="flex-1 flex flex-col min-w-0 bg-[#F8FAFC]">
         {/* Top bar */}
-        <div className="h-14 border-b border-[#E2E8F0] bg-white flex items-center px-6 gap-3">
-          <div className="flex-1">
-            <p className="text-sm font-semibold text-[#0F172A]">
-              {messages.length === 0 ? "New Verification Session" : "Active Verification Session"}
-            </p>
+        <div className="h-14 border-b border-[#E2E8F0] bg-white flex items-center px-4 md:px-6 gap-3">
+          <button 
+            className="md:hidden p-1.5 -ml-1.5 text-[#64748B] hover:text-[#0F172A] rounded-md hover:bg-[#F8FAFC]"
+            onClick={() => setIsSidebarOpen(true)}
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+          
+          <div className="flex-1 flex flex-col justify-center">
+            {isEditingTitle && currentSessionId ? (
+               <input
+                 autoFocus
+                 className="text-sm font-semibold text-[#0F172A] border-b border-[#2563EB] bg-transparent focus:outline-none w-full max-w-xs"
+                 value={tempTitle}
+                 onChange={e => setTempTitle(e.target.value)}
+                 onKeyDown={e => {
+                   if (e.key === 'Enter') handleRenameSession(currentSessionId, tempTitle);
+                   if (e.key === 'Escape') setIsEditingTitle(false);
+                 }}
+                 onBlur={() => setIsEditingTitle(false)}
+               />
+            ) : (
+               <div className="flex items-center gap-2 group">
+                 <p className="text-sm font-semibold text-[#0F172A] truncate">
+                   {messages.length === 0 ? "New Verification Session" : (sessions.find(s => s.id === currentSessionId)?.title || "Active Verification Session")}
+                 </p>
+                 {messages.length > 0 && currentSessionId && (
+                   <button 
+                     onClick={() => {
+                       setTempTitle(sessions.find(s => s.id === currentSessionId)?.title || "");
+                       setIsEditingTitle(true);
+                     }}
+                     className="text-[#94A3B8] opacity-0 group-hover:opacity-100 hover:text-[#2563EB] transition-opacity p-1"
+                   >
+                     <Edit2 className="w-3.5 h-3.5" />
+                   </button>
+                 )}
+               </div>
+            )}
             <p className="text-xs text-[#94A3B8]">Electoral Roll Graph Analysis</p>
           </div>
-          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-xs font-medium text-emerald-700">
+          
+          <span className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-xs font-medium text-emerald-700">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
             Neo4j Connected
           </span>
