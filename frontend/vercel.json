@@ -3,7 +3,7 @@
   "rewrites": [
     {
       "source": "/api/:match*",
-      "destination": "http://3.89.55.201/api/:match*"
+      "destination": "https://3-89-55-201.nip.io/api/:match*"
     }
   ]
 }
