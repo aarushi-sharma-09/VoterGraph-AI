@@ -88,7 +88,26 @@ const register = async (req, res) => {
 
     const otp = generateOtp();
     await createOtpToken(newUser.id, otp);
-    await sendOtpEmail(email, otp);
+
+    try {
+      await sendOtpEmail(email, otp);
+    } catch (sesErr) {
+      // If email delivery fails (e.g. SES Sandbox), roll back the user so
+      // they can retry with a valid/verified email address instead of getting
+      // permanently stuck on the OTP screen with no code.
+      console.error('[authController] SES send failed — rolling back user creation:', sesErr.message);
+      await prisma.otpToken.deleteMany({ where: { userId: newUser.id } });
+      await prisma.user.delete({ where: { id: newUser.id } });
+
+      // Detect SES Sandbox rejection specifically
+      if (sesErr.Code === 'MessageRejected' || sesErr?.Error?.Code === 'MessageRejected') {
+        return res.status(400).json({
+          error:   'EmailNotVerified',
+          message: 'This email address has not been verified with our mail provider. Please contact the administrator to whitelist your email, or try a different address.',
+        });
+      }
+      return res.status(503).json({ error: 'EmailDeliveryFailed', message: 'Could not send verification email. Please try again later.' });
+    }
 
     console.log(`[authController] 🆕 User registered (unverified): ${email}`);
     return res.status(201).json({
