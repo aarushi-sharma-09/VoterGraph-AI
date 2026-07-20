@@ -23,8 +23,12 @@ const startWorker = () => {
   setInterval(async () => {
     if (isPolling) return;
 
-    // Check concurrency gate
-    if (getActiveMs2Requests() >= MAX_CONCURRENT_MS2) {
+    // Check concurrency gate.
+    // Use max(MAX_CONCURRENT_MS2, 1) so the worker always processes at least
+    // 1 job at a time — even when MAX_CONCURRENT_MS2=0 (force-queue mode for
+    // incoming HTTP requests to avoid Vercel proxy timeouts).
+    const workerMaxConcurrency = Math.max(MAX_CONCURRENT_MS2, 1);
+    if (getActiveMs2Requests() >= workerMaxConcurrency) {
       return;
     }
 
