@@ -617,7 +617,7 @@ useEffect(() => {
           const res = await axios.get(`/api/chat/queue/${jobId}`, { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } });
           if (res.data.status === 'DONE') {
              clearInterval(pollTimerRef.current);
-             resolve(res.data.result);
+             resolve(res.data);
           } else if (res.data.status === 'FAILED') {
              clearInterval(pollTimerRef.current);
              reject(new Error(res.data.error || 'Job failed'));
