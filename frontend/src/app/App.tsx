@@ -715,11 +715,26 @@ useEffect(() => {
     } catch (err: any) {
       console.error(err);
       if (err.response?.status === 401) {
-          alert("Your session has expired. Please log in again.");
           onLogout();
-      } else {
-          alert(err.message || err.response?.data?.message || "Failed to process message.");
+          return;
       }
+      const status = err.response?.status;
+      const serverMsg = err.response?.data?.message || err.response?.data?.ms2_detail?.detail || "";
+      let friendlyMsg = "Something went wrong. Please try again.";
+      if (status === 503) {
+        if (serverMsg.toLowerCase().includes("rate") || serverMsg.toLowerCase().includes("quota") || serverMsg.toLowerCase().includes("overload")) {
+          friendlyMsg = "⏳ The AI engine is temporarily rate-limited. Please wait 30 seconds and try again. (Gemini free-tier limit reached)";
+        } else {
+          friendlyMsg = "🔌 The AI engine is currently unavailable. Please try again in a moment.";
+        }
+      } else if (status === 400) {
+        friendlyMsg = serverMsg || "Invalid request. Please check your input.";
+      } else if (status >= 500) {
+        friendlyMsg = "🛠️ A server error occurred. Our team has been notified. Please retry shortly.";
+      } else if (!navigator.onLine) {
+        friendlyMsg = "📶 No internet connection. Please check your network and try again.";
+      }
+      setMessages(prev => [...prev, { role: "error", text: friendlyMsg, timestamp: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) }]);
     } finally {
       setLoading(false);
       setQueueStatus(null);
@@ -872,7 +887,25 @@ useEffect(() => {
                     </p>
                   </div>
                 </div>
+              ) : msg.role === "error" ? (
+                <div className="flex justify-start">
+                  <div className="max-w-2xl w-full">
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-full bg-red-50 border border-red-200 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <span className="text-red-500 text-base">⚠</span>
+                      </div>
+                      <div className="flex-1">
+                        <div className="bg-red-50 border border-red-200 rounded-2xl rounded-tl-sm px-5 py-4 shadow-sm">
+                          <p className="text-xs font-semibold text-red-600 uppercase tracking-wide mb-1">System Notice</p>
+                          <p className="text-sm text-red-800 leading-relaxed">{msg.text}</p>
+                        </div>
+                        <p className="text-[10px] text-[#94A3B8] mt-1.5 ml-1">VoterGraph AI · {msg.timestamp}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               ) : (
+
                 <div className="flex justify-start">
                   <div className="max-w-2xl w-full">
                     <div className="flex items-start gap-3">
