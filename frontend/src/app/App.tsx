@@ -433,7 +433,7 @@ function LoginScreen({ onLogin }: { onLogin: (role: string, email: string) => vo
             {!isRegistering && (
               <p className="mt-3 text-center text-sm">
                 <button
-                  onClick={() => { setForgotEmail(email); setForgotStep(true); }}
+                  onClick={() => { setForgotEmail(email); setPassword(""); setForgotStep(true); }}
                   className="text-[#94A3B8] hover:text-[#0F172A] hover:underline font-medium"
                 >
                   Forgot Password?
