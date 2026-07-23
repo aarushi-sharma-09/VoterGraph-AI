@@ -77,6 +77,12 @@ function LoginScreen({ onLogin }: { onLogin: (role: string, email: string) => vo
     try {
       setLoading(true);
       const res = await axios.post(`/api/auth/login`, { email, password });
+      
+      if (tab === "admin" && res.data.user.role !== "CIVIC_ADMIN") {
+        alert("Access Denied: You do not have Civic Admin privileges.");
+        return;
+      }
+      
       localStorage.setItem("token", res.data.token);
       onLogin(res.data.user.role, res.data.user.email);
     } catch (err: any) {
